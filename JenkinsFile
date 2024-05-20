@@ -37,9 +37,13 @@ pipeline {
             steps {
                 script {
                     if (isUnix()) {
-                        sh 'go get go.mongodb.org/mongo-driver/mongo'
+                        sh 'go get go.mongodb.org/mongo-driver/mongo
+                            cd db
+                            go run createMongodb.go'
                     } else {
-                        bat 'go get go.mongodb.org/mongo-driver/mongo'
+                        bat 'go get go.mongodb.org/mongo-driver/mongo
+                            cd db
+                            go run createMongodb.go'
                     }
                 }
             }
