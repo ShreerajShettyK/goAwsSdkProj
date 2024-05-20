@@ -1,0 +1,87 @@
+pipeline {
+    agent {
+        docker {
+            image 'golang:1.22.3'
+            args '-u root'
+        }
+    }
+
+    triggers {
+        pollSCM '* * * * *'
+    }
+
+    environment {
+        GO_VERSION = '1.22.3' // Specify the desired Go version
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Setup') {
+            steps {
+                script {
+                    if (isUnix()) {
+                        sh 'go version'
+                    } else {
+                        bat 'go version'
+                    }
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    if (isUnix()) {
+                        sh 'go get go.mongodb.org/mongo-driver/mongo'
+                    } else {
+                        bat 'go get go.mongodb.org/mongo-driver/mongo'
+                    }
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    if (isUnix()) {
+                        sh 'go build'
+                    } else {
+                        bat 'go build'
+                    }
+                }
+            }
+        }
+
+        stage('Run') {
+            steps {
+                script {
+                    if (isUnix()) {
+                        sh './goooo'
+                    } else {
+                        bat 'goooo.exe'
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
+
+def isUnix() {
+    return !isWindows()
+}
+
+def isWindows() {
+    def isWindows = System.getenv("OS") ? System.getenv("OS").contains("Windows") : false
+    return isWindows
+}
