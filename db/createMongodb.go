@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -15,14 +17,22 @@ var client *mongo.Client
 
 func main() {
 	var err error
-	clientOptions := options.Client().ApplyURI("mongodb+srv://admin:admin@cluster0.0elhpdy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+
+	// Load environment variables from .env file
+	err = godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
+	mongoURI := os.Getenv("mongoDbConnectionString")
+	if mongoURI == "" {
+		log.Fatal("MONGODB connectionstring not set")
+	}
+	clientOptions := options.Client().ApplyURI(mongoURI)
 	client, err = mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// Insert dummy data
-	insertDummyData()
 
 	fmt.Println("Server started... on 8000")
 	http.HandleFunc("/", fetchData)
@@ -54,8 +64,8 @@ func insertDummyData() {
 
 	// Define dummy data
 	dummyData := []interface{}{
-		// bson.D{{Key: "name", Value: "John Doe"}, {Key: "age", Value: 30}, {Key: "city", Value: "New York"}},
-		// bson.D{{Key: "name", Value: "Jane Smith"}, {Key: "age", Value: 25}, {Key: "city", Value: "London"}},
+		bson.D{{Key: "name", Value: "John Doe"}, {Key: "age", Value: 30}, {Key: "city", Value: "New York"}},
+		bson.D{{Key: "name", Value: "Jane Smith"}, {Key: "age", Value: 25}, {Key: "city", Value: "London"}},
 		bson.D{{Key: "name", Value: "Bob Johnson"}, {Key: "age", Value: 35}, {Key: "city", Value: "Paris"}},
 	}
 
