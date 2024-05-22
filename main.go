@@ -17,8 +17,8 @@ import (
 const (
 	region            = "us-east-1"
 	instanceType      = types.InstanceTypeT2Micro
-	amiID             = "ami-04b70fa74e45c3917" // Example AMI ID for Ubuntu 20.04
-	securityGroupName = "auto-generated-security-group"
+	amiID             = "ami-0e001c9271cf7f3b9" // Example AMI ID for Ubuntu 22.04
+	securityGroupName = "auto-generated-security-group2"
 	subnetID          = "subnet-08854212983b84d1e" // Replace with your subnet ID
 	iamRoleName       = "SSMManagedInstanceRole"   // Ensure this matches the IAM role name you created
 )
@@ -193,6 +193,32 @@ func createEC2Instance(client *ec2.Client, securityGroupID string) (string, stri
 		time.Sleep(5 * time.Second)
 	}
 	fmt.Println("Instance is now running")
+
+	fmt.Println("Waiting for instance status checks to complete...")
+	for {
+		describeInstanceStatusInput := &ec2.DescribeInstanceStatusInput{
+			InstanceIds: []string{instanceID},
+		}
+
+		describeInstanceStatusResult, err := client.DescribeInstanceStatus(context.TODO(), describeInstanceStatusInput)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to describe instance status: %v", err)
+		}
+
+		if len(describeInstanceStatusResult.InstanceStatuses) > 0 {
+			instanceStatus := describeInstanceStatusResult.InstanceStatuses[0]
+			if instanceStatus.InstanceStatus.Status == "ok" &&
+				instanceStatus.SystemStatus.Status == "ok" {
+				break
+			}
+		}
+
+		if time.Since(startTime) > 10*time.Minute {
+			return "", "", fmt.Errorf("instance did not pass status checks in time")
+		}
+		time.Sleep(10 * time.Second)
+	}
+	fmt.Println("Instance has passed status checks")
 
 	describeInstancesResult, err := client.DescribeInstances(context.TODO(), describeInstancesInput)
 	if err != nil {
