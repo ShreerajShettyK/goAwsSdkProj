@@ -18,7 +18,7 @@ const (
 	region            = "us-east-1"
 	instanceType      = types.InstanceTypeT2Micro
 	amiID             = "ami-0e001c9271cf7f3b9" // Example AMI ID for Ubuntu 22.04
-	securityGroupName = "auto-generated-security-group2"
+	securityGroupName = "auto-generated-security-group8"
 	subnetID          = "subnet-08854212983b84d1e" // Replace with your subnet ID
 	iamRoleName       = "SSMManagedInstanceRole"   // Ensure this matches the IAM role name you created
 )

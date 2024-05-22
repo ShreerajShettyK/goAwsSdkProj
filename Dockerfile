@@ -19,18 +19,14 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 # Use a minimal image as the base image for the final container
 FROM alpine:latest
 
-# Install necessary packages
-RUN apk --no-cache add ca-certificates
-
 # Set the Current Working Directory inside the container
 WORKDIR /root/
 
 # Copy the pre-built binary file from the builder stage
 COPY --from=builder /app/main .
-COPY --from=builder /app/db /root/db
 
 # Expose port 8080 to the outside world
-EXPOSE 8080
+EXPOSE 8081
 
 # Command to run the executable
 CMD ["./main"]
