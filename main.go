@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/pem"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"time"
@@ -11,16 +11,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"golang.org/x/crypto/ssh"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 const (
 	region            = "us-east-1"
 	instanceType      = types.InstanceTypeT2Micro
 	amiID             = "ami-04b70fa74e45c3917" // Example AMI ID for Ubuntu 20.04
-	keyPairName       = "my-new-key-pair"
 	securityGroupName = "auto-generated-security-group"
-	subnetID          = "subnet-093b5b9b6b1da8e29" // Replace with your subnet ID
+	subnetID          = "subnet-08854212983b84d1e" // Replace with your subnet ID
+	iamRoleName       = "SSMManagedInstanceRole"   // Ensure this matches the IAM role name you created
 )
 
 func main() {
@@ -31,40 +31,62 @@ func main() {
 
 	ec2Client := ec2.NewFromConfig(cfg)
 
-	keyPair, err := createKeyPair(ec2Client)
-	if err != nil {
-		log.Fatalf("unable to create key pair: %v", err)
-	}
-	fmt.Printf("Created key pair %s\n", *keyPair.KeyName)
-
 	securityGroupID, err := createSecurityGroup(ec2Client, subnetID)
 	if err != nil {
 		log.Fatalf("unable to create security group: %v", err)
 	}
 	fmt.Printf("Created security group %s\n", securityGroupID)
 
-	instanceID, publicDNS, err := createEC2Instance(ec2Client, keyPairName, securityGroupID)
+	instanceID, publicDNS, err := createEC2Instance(ec2Client, securityGroupID)
 	if err != nil {
 		log.Fatalf("unable to create instance: %v", err)
 	}
 	fmt.Printf("Created instance %s with public DNS %s\n", instanceID, publicDNS)
 
-	err = runShellCommands(publicDNS, keyPair.KeyMaterial)
-	if err != nil {
-		log.Fatalf("unable to run shell commands: %v", err)
+	ssmClient := ssm.NewFromConfig(cfg)
+	commands := []string{
+		"sudo apt update",
+		"sudo apt install -y apt-transport-https ca-certificates curl software-properties-common",
+		"curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -",
+		"sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"",
+		"sudo apt update",
+		"sudo apt install -y docker-ce",
+		"sudo systemctl start docker",
+		"sudo systemctl enable docker",
+		"sudo usermod -aG docker ubuntu",
+		"sudo curl -L \"https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)\" -o /usr/local/bin/docker-compose",
+		"sudo chmod +x /usr/local/bin/docker-compose",
+		"docker --version",
+		"docker-compose --version",
 	}
-	fmt.Println("Shell script executed successfully")
-}
 
-func createKeyPair(client *ec2.Client) (*ec2.CreateKeyPairOutput, error) {
-	input := &ec2.CreateKeyPairInput{
-		KeyName: aws.String(keyPairName),
+	commandInput := &ssm.SendCommandInput{
+		InstanceIds:  []string{instanceID},
+		DocumentName: aws.String("AWS-RunShellScript"),
+		Parameters: map[string][]string{
+			"commands": commands,
+		},
 	}
-	result, err := client.CreateKeyPair(context.TODO(), input)
+
+	output, err := ssmClient.SendCommand(context.TODO(), commandInput)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create key pair: %v", err)
+		log.Fatalf("failed to send SSM command, %v", err)
 	}
-	return result, nil
+
+	fmt.Println("Successfully sent SSM command to install Docker and SSM Agent")
+	fmt.Printf("SSM Command ID: %s\n", *output.Command.CommandId)
+
+	// Wait for the command to complete
+	time.Sleep(30 * time.Second)
+	describeCommandOutput, err := ssmClient.GetCommandInvocation(context.TODO(), &ssm.GetCommandInvocationInput{
+		CommandId:  output.Command.CommandId,
+		InstanceId: aws.String(instanceID),
+	})
+	if err != nil {
+		log.Fatalf("failed to describe command invocation, %v", err)
+	}
+	fmt.Printf("Command Status: %s\n", describeCommandOutput.Status)
+	fmt.Printf("Command Output: %s\n", describeCommandOutput.StandardOutputContent)
 }
 
 func createSecurityGroup(client *ec2.Client, subnetID string) (string, error) {
@@ -111,14 +133,36 @@ func createSecurityGroup(client *ec2.Client, subnetID string) (string, error) {
 	return *sgResult.GroupId, nil
 }
 
-func createEC2Instance(client *ec2.Client, keyName, securityGroupID string) (string, string, error) {
+func createEC2Instance(client *ec2.Client, securityGroupID string) (string, string, error) {
+	userData := `#!/bin/bash
+        sudo apt update
+        sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+        sudo apt update
+        sudo apt install -y docker-ce
+        sudo systemctl start docker
+        sudo systemctl enable docker
+        sudo usermod -aG docker ubuntu
+        sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+        docker --version
+        docker-compose --version
+        sudo snap install amazon-ssm-agent --classic
+        sudo systemctl start snap.amazon-ssm-agent.amazon-ssm-agent
+        sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent
+    `
+
 	instanceInput := &ec2.RunInstancesInput{
 		ImageId:          aws.String(amiID),
 		InstanceType:     instanceType,
 		MinCount:         aws.Int32(1),
 		MaxCount:         aws.Int32(1),
-		KeyName:          aws.String(keyName),
 		SecurityGroupIds: []string{securityGroupID},
+		IamInstanceProfile: &types.IamInstanceProfileSpecification{
+			Name: aws.String(iamRoleName),
+		},
+		UserData: aws.String(base64.StdEncoding.EncodeToString([]byte(userData))),
 	}
 
 	runResult, err := client.RunInstances(context.TODO(), instanceInput)
@@ -157,57 +201,4 @@ func createEC2Instance(client *ec2.Client, keyName, securityGroupID string) (str
 	publicDNS := *describeInstancesResult.Reservations[0].Instances[0].PublicDnsName
 
 	return instanceID, publicDNS, nil
-}
-
-func runShellCommands(publicDNS string, keyMaterial *string) error {
-	block, _ := pem.Decode([]byte(*keyMaterial))
-	if block == nil || block.Type != "RSA PRIVATE KEY" {
-		return fmt.Errorf("failed to decode PEM block containing private key")
-	}
-	privateKey, err := ssh.ParsePrivateKey(block.Bytes)
-	if err != nil {
-		return fmt.Errorf("failed to parse private key: %v", err)
-	}
-
-	sshConfig := &ssh.ClientConfig{
-		User: "ubuntu", // Replace with appropriate SSH username for your AMI
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(privateKey),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-
-	fmt.Println("Waiting for SSH to be available...")
-	startTime := time.Now()
-	for {
-		conn, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", publicDNS), sshConfig)
-		if err == nil {
-			conn.Close()
-			break
-		}
-		if time.Since(startTime) > 2*time.Minute {
-			return fmt.Errorf("SSH connection timeout")
-		}
-		time.Sleep(5 * time.Second)
-	}
-	fmt.Println("SSH is now available")
-
-	conn, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", publicDNS), sshConfig)
-	if err != nil {
-		return fmt.Errorf("failed to dial: %v", err)
-	}
-	defer conn.Close()
-
-	session, err := conn.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create session: %v", err)
-	}
-	defer session.Close()
-
-	err = session.Run("sudo apt-get update -y && sudo apt-get upgrade -y")
-	if err != nil {
-		return fmt.Errorf("failed to run: %v", err)
-	}
-
-	return nil
 }

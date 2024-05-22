@@ -28,6 +28,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.15
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.161.3
 	github.com/aws/aws-sdk-go-v2/service/iam v1.32.3
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.50.3
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
