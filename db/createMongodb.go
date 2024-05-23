@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -19,22 +17,22 @@ func main() {
 	var err error
 
 	// Load environment variables from .env file
-	err = godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
+	// err = godotenv.Load()
+	// if err != nil {
+	// 	log.Fatalf("Error loading .env file: %v", err)
+	// }
 
-	mongoURI := os.Getenv("mongoDbConnectionString")
-	if mongoURI == "" {
-		log.Fatal("MONGODB connectionstring not set")
-	}
-	clientOptions := options.Client().ApplyURI(mongoURI)
+	// mongoURI := os.Getenv("mongoDbConnectionString")
+	// if mongoURI == "" {
+	// 	log.Fatal("MONGODB connectionstring not set")
+	// }
+	clientOptions := options.Client().ApplyURI("mongodb+srv://admin:admin@cluster0.0elhpdy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 	client, err = mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Server started... on 8000")
+	fmt.Println("MongoDb Server started... on 8000")
 	http.HandleFunc("/", fetchData)
 	log.Fatal(http.ListenAndServe(":8000", nil))
 }

@@ -16,17 +16,25 @@ COPY . .
 # Build the Go app
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
+# Build the createMongodb.go web service
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o createMongodb ./db/createMongodb.go
+
 # Use a minimal image as the base image for the final container
 FROM alpine:latest
 
 # Set the Current Working Directory inside the container
 WORKDIR /root/
 
-# Copy the pre-built binary file from the builder stage
+# Copy the pre-built binary files from the builder stage
 COPY --from=builder /app/main .
+COPY --from=builder /app/createMongodb ./db/createMongodb
 
-# Expose port 8080 to the outside world
-EXPOSE 8081
+# Copy the .env file
+COPY ./db/.env ./db/.env
 
-# Command to run the executable
-CMD ["./main"]
+# Expose necessary ports
+EXPOSE 8000
+# EXPOSE 8081  
+
+# Command to run both services
+CMD ./main & ./db/createMongodb
