@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -101,16 +102,31 @@ func createSecurityGroup(client *ec2.Client, subnetID string) (string, error) {
 	}
 	vpcID := *subnetResult.Subnets[0].VpcId
 
-	securityGroupName := randString(20)
+	var sgResult *ec2.CreateSecurityGroupOutput
+	maxRetries := 5
+	for retries := 0; retries < maxRetries; retries++ {
+		securityGroupName := randString(20)
 
-	sgInput := &ec2.CreateSecurityGroupInput{
-		Description: aws.String("Security group for SSH access"),
-		GroupName:   aws.String(securityGroupName),
-		VpcId:       aws.String(vpcID),
+		sgInput := &ec2.CreateSecurityGroupInput{
+			Description: aws.String("Security group for SSH access"),
+			GroupName:   aws.String(securityGroupName),
+			VpcId:       aws.String(vpcID),
+		}
+
+		sgResult, err = client.CreateSecurityGroup(context.TODO(), sgInput)
+		if err != nil {
+			if strings.Contains(err.Error(), "InvalidGroup.Duplicate") {
+				// If the error is due to a duplicate group name, retry
+				fmt.Printf("Security group name '%s' already exists, retrying with a new name...\n", securityGroupName)
+				continue
+			}
+			return "", fmt.Errorf("failed to create security group: %v", err)
+		}
+		break
 	}
-	sgResult, err := client.CreateSecurityGroup(context.TODO(), sgInput)
-	if err != nil {
-		return "", fmt.Errorf("failed to create security group: %v", err)
+
+	if sgResult == nil {
+		return "", fmt.Errorf("failed to create a unique security group after %d attempts", maxRetries)
 	}
 
 	authInput := &ec2.AuthorizeSecurityGroupIngressInput{
