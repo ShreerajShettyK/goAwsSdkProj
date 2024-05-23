@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -15,12 +16,12 @@ import (
 )
 
 const (
-	region            = "us-east-1"
-	instanceType      = types.InstanceTypeT2Micro
-	amiID             = "ami-0e001c9271cf7f3b9" // Example AMI ID for Ubuntu 22.04
-	securityGroupName = "auto-generated-security-group25"
-	subnetID          = "subnet-08854212983b84d1e" // Replace with your subnet ID
-	iamRoleName       = "SSMManagedInstanceRole"   // Ensure this matches the IAM role name you created
+	region       = "us-east-1"
+	instanceType = types.InstanceTypeT2Micro
+	amiID        = "ami-0e001c9271cf7f3b9" // Example AMI ID for Ubuntu 22.04
+	// securityGroupName = "auto-generated-security-group25"
+	subnetID    = "subnet-08854212983b84d1e" // Replace with your subnet ID
+	iamRoleName = "SSMManagedInstanceRole"   // Ensure this matches the IAM role name you created
 )
 
 func main() {
@@ -99,6 +100,8 @@ func createSecurityGroup(client *ec2.Client, subnetID string) (string, error) {
 		return "", fmt.Errorf("failed to describe subnet: %v", err)
 	}
 	vpcID := *subnetResult.Subnets[0].VpcId
+
+	securityGroupName := randString(20)
 
 	sgInput := &ec2.CreateSecurityGroupInput{
 		Description: aws.String("Security group for SSH access"),
@@ -227,4 +230,14 @@ func createEC2Instance(client *ec2.Client, securityGroupID string) (string, stri
 	publicDNS := *describeInstancesResult.Reservations[0].Instances[0].PublicDnsName
 
 	return instanceID, publicDNS, nil
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func randString(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
