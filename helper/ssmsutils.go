@@ -50,7 +50,7 @@ func ExecuteSSMCommands(cfg aws.Config, instanceID string) error {
 		return fmt.Errorf("failed to send SSM command: %v", err)
 	}
 
-	log.Printf("Successfully sent SSM command to install and SSM Agent, Docker and Jenkins")
+	log.Printf("Successfully sent SSM command to install SSM Agent, Docker and Jenkins")
 	log.Printf("SSM Command ID: %s\n", *output.Command.CommandId)
 
 	// Wait for the command to complete
