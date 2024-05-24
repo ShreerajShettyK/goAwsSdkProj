@@ -34,11 +34,12 @@ func main() {
 
 	fmt.Println("MongoDb Server started... on 8000")
 	http.HandleFunc("/", fetchData)
-	log.Fatal(http.ListenAndServe(":8000", nil))
+	log.Fatal(http.ListenAndServe(":8001", nil))
 }
 
 func fetchData(w http.ResponseWriter, r *http.Request) {
-	collection := client.Database("TestingDatabase").Collection("Table1")
+	collection := client.Database("mydatabase").Collection("imagetags")
+
 	filter := bson.D{}
 	cursor, err := collection.Find(context.Background(), filter)
 	if err != nil {

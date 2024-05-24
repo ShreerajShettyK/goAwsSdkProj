@@ -63,6 +63,6 @@ func ExecuteSSMCommands(cfg aws.Config, instanceID string) error {
 		return fmt.Errorf("failed to describe command invocation: %v", err)
 	}
 	log.Printf("Command Status: %s\n", describeCommandOutput.Status)
-	log.Printf("Command Output: %s\n", describeCommandOutput.StandardOutputContent)
+	log.Printf("Command Output: %v\n", describeCommandOutput.StandardOutputContent)
 	return nil
 }
