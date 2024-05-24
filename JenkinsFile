@@ -1,91 +1,28 @@
 pipeline {
-    agent {
-        docker {
-            image 'golang:1.22.3'
-            args '-u root'
-        }
-    }
-
-    triggers {
-        pollSCM '* * * * *'
-    }
-
-    environment {
-        GO_VERSION = '1.22.3' // Specify the desired Go version
-    }
-
+    agent any
+    
     stages {
-        stage('Checkout') {
+        stage('Clone Git Repository') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/ShreerajShettyK/goAwsSdkProj'
             }
         }
-
-        stage('Setup') {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    if (isUnix()) {
-                        sh 'go version'
-                    } else {
-                        bat 'go version'
-                    }
+                    // Build the Docker image
+                    bat 'docker build -t go-aws-sdk-proj .'
                 }
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Run Docker Container') {
             steps {
                 script {
-                    if (isUnix()) {
-                        sh 'go get go.mongodb.org/mongo-driver/mongo
-                            cd db
-                            go run createMongodb.go'
-                    } else {
-                        bat 'go get go.mongodb.org/mongo-driver/mongo
-                            cd db
-                            go run createMongodb.go'
-                    }
-                }
-            }
-        }
-
-        stage('Build') {
-            steps {
-                script {
-                    if (isUnix()) {
-                        sh 'go build'
-                    } else {
-                        bat 'go build'
-                    }
-                }
-            }
-        }
-
-        stage('Run') {
-            steps {
-                script {
-                    if (isUnix()) {
-                        sh './goooo'
-                    } else {
-                        bat 'goooo.exe'
-                    }
+                    // Run the Docker container
+                    
                 }
             }
         }
     }
-
-    post {
-        always {
-            cleanWs()
-        }
-    }
-}
-
-def isUnix() {
-    return !isWindows()
-}
-
-def isWindows() {
-    def isWindows = System.getenv("OS") ? System.getenv("OS").contains("Windows") : false
-    return isWindows
 }
