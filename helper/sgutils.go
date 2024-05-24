@@ -3,7 +3,6 @@ package helper
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"strings"
 
@@ -27,7 +26,7 @@ func CreateSecurityGroup(client *ec2.Client, subnetID string) (string, error) {
 	subnetInput := &ec2.DescribeSubnetsInput{
 		SubnetIds: []string{subnetID},
 	}
-	subnetResult, err := client.DescribeSubnets(context.TODO(), subnetInput)
+	subnetResult, err := client.DescribeSubnets(context.Background(), subnetInput)
 	if err != nil {
 		return "", fmt.Errorf("failed to describe subnet: %v", err)
 	}
@@ -44,11 +43,9 @@ func CreateSecurityGroup(client *ec2.Client, subnetID string) (string, error) {
 			VpcId:       aws.String(vpcID),
 		}
 
-		sgResult, err = client.CreateSecurityGroup(context.TODO(), sgInput)
+		sgResult, err = client.CreateSecurityGroup(context.Background(), sgInput)
 		if err != nil {
 			if strings.Contains(err.Error(), "InvalidGroup.Duplicate") {
-				// If the error is due to a duplicate group name, retry
-				log.Printf("Security group name '%s' already exists, retrying with a new name...\n", securityGroupName)
 				continue
 			}
 			return "", fmt.Errorf("failed to create security group: %v", err)
@@ -75,7 +72,7 @@ func CreateSecurityGroup(client *ec2.Client, subnetID string) (string, error) {
 			},
 		},
 	}
-	_, err = client.AuthorizeSecurityGroupIngress(context.TODO(), authInput)
+	_, err = client.AuthorizeSecurityGroupIngress(context.Background(), authInput)
 	if err != nil {
 		return "", fmt.Errorf("failed to authorize security group ingress: %v", err)
 	}

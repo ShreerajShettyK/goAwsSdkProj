@@ -45,7 +45,7 @@ func ExecuteSSMCommands(cfg aws.Config, instanceID string) error {
 		},
 	}
 
-	output, err := ssmClient.SendCommand(context.TODO(), commandInput)
+	output, err := ssmClient.SendCommand(context.Background(), commandInput)
 	if err != nil {
 		return fmt.Errorf("failed to send SSM command: %v", err)
 	}
@@ -55,7 +55,7 @@ func ExecuteSSMCommands(cfg aws.Config, instanceID string) error {
 
 	// Wait for the command to complete
 	time.Sleep(30 * time.Second)
-	describeCommandOutput, err := ssmClient.GetCommandInvocation(context.TODO(), &ssm.GetCommandInvocationInput{
+	describeCommandOutput, err := ssmClient.GetCommandInvocation(context.Background(), &ssm.GetCommandInvocationInput{
 		CommandId:  output.Command.CommandId,
 		InstanceId: aws.String(instanceID),
 	})

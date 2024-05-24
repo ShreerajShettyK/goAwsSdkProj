@@ -44,7 +44,7 @@ func CreateEC2Instance(client *ec2.Client, securityGroupID, instanceType, amiID,
 		UserData: aws.String(base64.StdEncoding.EncodeToString([]byte(userData))),
 	}
 
-	runResult, err := client.RunInstances(context.TODO(), instanceInput)
+	runResult, err := client.RunInstances(context.Background(), instanceInput)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to run instances: %v", err)
 	}
@@ -58,7 +58,7 @@ func CreateEC2Instance(client *ec2.Client, securityGroupID, instanceType, amiID,
 	log.Printf("Waiting for instance to be in running state...")
 	startTime := time.Now()
 	for {
-		describeInstancesResult, err := client.DescribeInstances(context.TODO(), describeInstancesInput)
+		describeInstancesResult, err := client.DescribeInstances(context.Background(), describeInstancesInput)
 		if err != nil {
 			return "", "", fmt.Errorf("failed to describe instances: %v", err)
 		}
@@ -79,7 +79,7 @@ func CreateEC2Instance(client *ec2.Client, securityGroupID, instanceType, amiID,
 			InstanceIds: []string{instanceID},
 		}
 
-		describeInstanceStatusResult, err := client.DescribeInstanceStatus(context.TODO(), describeInstanceStatusInput)
+		describeInstanceStatusResult, err := client.DescribeInstanceStatus(context.Background(), describeInstanceStatusInput)
 		if err != nil {
 			return "", "", fmt.Errorf("failed to describe instance status: %v", err)
 		}
@@ -99,7 +99,7 @@ func CreateEC2Instance(client *ec2.Client, securityGroupID, instanceType, amiID,
 	}
 	log.Printf("Instance has passed status checks")
 
-	describeInstancesResult, err := client.DescribeInstances(context.TODO(), describeInstancesInput)
+	describeInstancesResult, err := client.DescribeInstances(context.Background(), describeInstancesInput)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to describe instances: %v", err)
 	}
