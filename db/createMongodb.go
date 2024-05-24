@@ -34,7 +34,7 @@ func main() {
 
 	fmt.Println("MongoDb Server started... on 8000")
 	http.HandleFunc("/", fetchData)
-	log.Fatal(http.ListenAndServe(":8001", nil))
+	log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
 func fetchData(w http.ResponseWriter, r *http.Request) {
