@@ -4,7 +4,10 @@ pipeline {
     stages {
         stage('Clone Git Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/ShreerajShettyK/goAwsSdkProj'
+                bat """
+                    rm -rf goAwsSdkProj
+                    git clone https://github.com/ShreerajShettyK/goAwsSdkProj.git
+                """
             }
         }
         stage('Build Docker Image') {

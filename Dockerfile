@@ -5,7 +5,6 @@ FROM golang:1.18-alpine AS builder
 WORKDIR /app
 
 # Copy go.mod and go.sum files
-# COPY go.mod go.sum ./
 COPY . .
 
 # Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
@@ -14,10 +13,8 @@ RUN go mod download
 # Copy the source code into the container
 
 # Build the Go app
-RUN go build -a -installsuffix cgo -o main .
-
-# Build the createMongodb.go web service
-RUN go build -a -installsuffix cgo -o createMongodb ./db/createMongodb.go
+RUN go build -o main .
+RUN go build -o createMongodb ./db/createMongodb.go
 
 # Use a minimal image as the base image for the final container
 FROM alpine:latest
@@ -30,11 +27,16 @@ COPY --from=builder /app/main .
 COPY --from=builder /app/createMongodb ./db/createMongodb
 
 # Copy the .env file
-COPY ./db/.env ./db/.env
+COPY .env /root/.env
+
+# Copy the shell script
+COPY start.sh /root/start.sh
+
+# Make the shell script executable
+RUN chmod +x /root/start.sh
 
 # Expose necessary ports
 EXPOSE 8000
-# EXPOSE 8081  
 
-# Command to run both services
-CMD ./main & ./db/createMongodb
+# Command to run the shell script
+CMD ["/root/start.sh"]

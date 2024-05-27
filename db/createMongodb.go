@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -17,16 +19,16 @@ func main() {
 	var err error
 
 	// Load environment variables from .env file
-	// err = godotenv.Load()
-	// if err != nil {
-	// 	log.Fatalf("Error loading .env file: %v", err)
-	// }
+	err = godotenv.Load("/root/.env")
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
 
-	// mongoURI := os.Getenv("mongoDbConnectionString")
-	// if mongoURI == "" {
-	// 	log.Fatal("MONGODB connectionstring not set")
-	// }
-	clientOptions := options.Client().ApplyURI("mongodb+srv://admin:admin@cluster0.0elhpdy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+	mongoURI := os.Getenv("mongoDbConnectionString")
+	if mongoURI == "" {
+		log.Fatal("MONGODB connection string not set")
+	}
+	clientOptions := options.Client().ApplyURI(mongoURI)
 	client, err = mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		log.Fatal(err)
@@ -56,23 +58,4 @@ func fetchData(w http.ResponseWriter, r *http.Request) {
 	for _, result := range results {
 		fmt.Fprintf(w, "%v\n", result)
 	}
-}
-
-func insertDummyData() {
-	collection := client.Database("TestingDatabase").Collection("Table1")
-
-	// Define dummy data
-	dummyData := []interface{}{
-		bson.D{{Key: "name", Value: "John Doe"}, {Key: "age", Value: 30}, {Key: "city", Value: "New York"}},
-		bson.D{{Key: "name", Value: "Jane Smith"}, {Key: "age", Value: 25}, {Key: "city", Value: "London"}},
-		bson.D{{Key: "name", Value: "Bob Johnson"}, {Key: "age", Value: 35}, {Key: "city", Value: "Paris"}},
-	}
-
-	// Insert dummy data
-	_, err := collection.InsertMany(context.Background(), dummyData)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Dummy data inserted successfully")
 }
