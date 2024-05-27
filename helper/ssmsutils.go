@@ -10,6 +10,19 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
+// Wait for the SSM command to reach a terminal state (from inprogress to Success)
+func waitForSSMCommandCompletion(ssmClient *ssm.Client, commandID, instanceID string) error {
+	waiter := ssm.NewCommandExecutedWaiter(ssmClient)
+	describeCommandInput := &ssm.GetCommandInvocationInput{
+		CommandId:  aws.String(commandID),
+		InstanceId: aws.String(instanceID),
+	}
+	if err := waiter.Wait(context.Background(), describeCommandInput, 10*time.Minute); err != nil {
+		return fmt.Errorf("SSM command did not complete in time: %v", err)
+	}
+	return nil
+}
+
 func ExecuteSSMCommands(cfg aws.Config, instanceID string) error {
 	ssmClient := ssm.NewFromConfig(cfg)
 	commands := []string{
@@ -53,8 +66,11 @@ func ExecuteSSMCommands(cfg aws.Config, instanceID string) error {
 	log.Printf("Successfully sent SSM command to install SSM Agent, Docker and Jenkins")
 	log.Printf("SSM Command ID: %s\n", *output.Command.CommandId)
 
-	// Wait for the command to complete
-	time.Sleep(30 * time.Second)
+	// Wait for the command to complete using waiter
+	if err := waitForSSMCommandCompletion(ssmClient, aws.ToString(output.Command.CommandId), instanceID); err != nil {
+		return err
+	}
+
 	describeCommandOutput, err := ssmClient.GetCommandInvocation(context.Background(), &ssm.GetCommandInvocationInput{
 		CommandId:  output.Command.CommandId,
 		InstanceId: aws.String(instanceID),
