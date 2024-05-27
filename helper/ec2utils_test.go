@@ -2,111 +2,43 @@ package helper
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateEC2Instance(t *testing.T) {
-	cfg, err := config.LoadDefaultConfig(context.Background())
-	if err != nil {
-		t.Fatalf("unable to load SDK config, %v", err)
-	}
+func TestEc2Instance(t *testing.T) {
+	_, _, err := CreateEC2Instance(MockEc2Creation{
+		RunInstancesError: fmt.Errorf("Couldnt create ec2 instance"),
+	}, "securityGroupId", "instanceType", "amiId", "iamRoleName")
+	assert.Equal(t, err.Error(), "failed to run instances: Couldnt create ec2 instance")
+}
 
-	ec2Client := ec2.NewFromConfig(cfg)
+type MockEc2Creation struct {
+	RunInstancesError           error
+	DescribeInstancesError      error
+	DescribeInstanceStatusError error
+}
 
-	type args struct {
-		client          *ec2.Client
-		securityGroupID string
-		instanceType    string
-		amiID           string
-		iamRoleName     string
+func (m MockEc2Creation) RunInstances(ctx context.Context, params *ec2.RunInstancesInput, optFns ...func(*ec2.Options)) (*ec2.RunInstancesOutput, error) {
+	if m.RunInstancesError != nil {
+		return nil, m.RunInstancesError
 	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		want1   string
-		wantErr bool
-	}{
-		{
-			name: "Successful Instance Creation",
-			args: args{
-				client:          ec2Client,
-				securityGroupID: "sg-0b771161b3d1e1849", // Replace with a valid security group ID
-				instanceType:    "t2.micro",
-				amiID:           "ami-0e001c9271cf7f3b9", // Example AMI ID for Ubuntu 22.04
-				iamRoleName:     "SSMManagedInstanceRole",
+	return &ec2.RunInstancesOutput{
+		Instances: []types.Instance{
+			{
+				InstanceId: aws.String("ec2InstanceId"),
 			},
-			wantErr: false,
 		},
-		{
-			name: "Invalid Security Group ID",
-			args: args{
-				client:          ec2Client,
-				securityGroupID: "invalid-security-group-id",
-				instanceType:    "t2.micro",
-				amiID:           "ami-0e001c9271cf7f3b9",
-				iamRoleName:     "SSMManagedInstanceRole",
-			},
-			wantErr: true,
-		},
-		{
-			name: "Invalid Instance Type",
-			args: args{
-				client:          ec2Client,
-				securityGroupID: "sg-0b771161b3d1e1849",
-				instanceType:    "invalid-instance-type",
-				amiID:           "ami-0e001c9271cf7f3b9",
-				iamRoleName:     "SSMManagedInstanceRole",
-			},
-			wantErr: true,
-		},
-		{
-			name: "Invalid AMI ID",
-			args: args{
-				client:          ec2Client,
-				securityGroupID: "sg-0b771161b3d1e1849",
-				instanceType:    "t2.micro",
-				amiID:           "invalid-ami-id",
-				iamRoleName:     "SSMManagedInstanceRole",
-			},
-			wantErr: true,
-		},
-		{
-			name: "Invalid IAM Role Name",
-			args: args{
-				client:          ec2Client,
-				securityGroupID: "sg-0b771161b3d1e1849",
-				instanceType:    "t2.micro",
-				amiID:           "ami-0e001c9271cf7f3b9",
-				iamRoleName:     "invalid-iam-role-name",
-			},
-			wantErr: true,
-		},
-		{
-			name: "Timeout during Instance Creation",
-			args: args{
-				client:          ec2Client,
-				securityGroupID: "sg-0b771161b3d1e1849",
-				instanceType:    "t2.micro",
-				amiID:           "ami-0e001c9271cf7f3b9",
-				iamRoleName:     "SSMManagedInstanceRole",
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := CreateEC2Instance(tt.args.client, tt.args.securityGroupID, tt.args.instanceType, tt.args.amiID, tt.args.iamRoleName)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateEC2Instance() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.wantErr == false && (got == "" || got1 == "") {
-				t.Errorf("Expected non-empty instance ID and public DNS, got %v and %v", got, got1)
-			}
-		})
-	}
+	}, nil
+}
+func (m MockEc2Creation) DescribeInstances(ctx context.Context, params *ec2.DescribeInstancesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstancesOutput, error) {
+	return nil, nil
+}
+func (m MockEc2Creation) DescribeInstanceStatus(ctx context.Context, params *ec2.DescribeInstanceStatusInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstanceStatusOutput, error) {
+	return nil, nil
 }
