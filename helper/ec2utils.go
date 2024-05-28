@@ -39,7 +39,7 @@ func createUserDataScript() string {
     `
 }
 
-func createInstanceInput(securityGroupID, instanceType, amiID, iamRoleName, userData string) *ec2.RunInstancesInput {
+func createInstanceInput(securityGroupID, instanceType, amiID, instanceProfileName, userData string) *ec2.RunInstancesInput {
 	return &ec2.RunInstancesInput{
 		ImageId:          aws.String(amiID),
 		InstanceType:     types.InstanceType(instanceType),
@@ -47,7 +47,7 @@ func createInstanceInput(securityGroupID, instanceType, amiID, iamRoleName, user
 		MaxCount:         aws.Int32(1),
 		SecurityGroupIds: []string{securityGroupID},
 		IamInstanceProfile: &types.IamInstanceProfileSpecification{
-			Name: aws.String(iamRoleName),
+			Name: aws.String(instanceProfileName),
 		},
 		UserData: aws.String(base64.StdEncoding.EncodeToString([]byte(userData))),
 	}
@@ -86,9 +86,9 @@ func waitForInstanceStatusChecks(client ec2InstanceInterface, instanceID string)
 	return nil
 }
 
-func CreateEC2Instance(client ec2InstanceInterface, securityGroupID, instanceType, amiID, iamRoleName string) (string, string, error) {
+func CreateEC2Instance(client ec2InstanceInterface, securityGroupID, instanceType, amiID, instanceProfileName string) (string, string, error) {
 	userData := createUserDataScript()
-	instanceInput := createInstanceInput(securityGroupID, instanceType, amiID, iamRoleName, userData)
+	instanceInput := createInstanceInput(securityGroupID, instanceType, amiID, instanceProfileName, userData)
 
 	runResult, err := client.RunInstances(context.Background(), instanceInput)
 	if err != nil {

@@ -19,6 +19,7 @@ func EnsureIAMRole(client *iam.Client, roleName, policyEC2Role, policySSMCore st
 
 	if err == nil {
 		log.Printf("IAM role %s already exists\n", roleName)
+		return roleName, nil
 	} else {
 		var notFound *iamTypes.NoSuchEntityException
 		if !errors.As(err, &notFound) {
@@ -37,7 +38,6 @@ func EnsureIAMRole(client *iam.Client, roleName, policyEC2Role, policySSMCore st
 						"ssm:GetDocument",
 						"ssm:DescribeDocument",
 						"ssm:GetManifest",
-						"ssm:GetParameter",
 						"ssm:GetParameters",
 						"ssm:ListAssociations",
 						"ssm:ListInstanceAssociations",
@@ -48,7 +48,8 @@ func EnsureIAMRole(client *iam.Client, roleName, policyEC2Role, policySSMCore st
 						"ssm:UpdateInstanceAssociationStatus",
 						"ssm:UpdateInstanceInformation",
 						"ssm:SendCommand",
-						"ssm:GetCommandInvocation"
+						"ssm:StartSession",
+						"ssm:TerminateSession"
 					],
 					"Resource": "*"
 				},
@@ -114,7 +115,28 @@ func EnsureIAMRole(client *iam.Client, roleName, policyEC2Role, policySSMCore st
 			return "", fmt.Errorf("failed to attach IAM policy to role: %v", err)
 		}
 		log.Printf("Attached IAM policy SSMSessionManagerPolicy to role %s\n", roleName)
+
+		// Create an instance profile
+		_, err = client.CreateInstanceProfile(context.Background(), &iam.CreateInstanceProfileInput{
+			InstanceProfileName: aws.String(roleName),
+		})
+		if err != nil {
+			return "", fmt.Errorf("failed to create instance profile: %v", err)
+		}
+		log.Printf("Created instance profile %s\n", roleName)
+
+		// Add the role to the instance profile
+		_, err = client.AddRoleToInstanceProfile(context.Background(), &iam.AddRoleToInstanceProfileInput{
+			InstanceProfileName: aws.String(roleName),
+			RoleName:            aws.String(roleName),
+		})
+		if err != nil {
+			return "", fmt.Errorf("failed to add role to instance profile: %v", err)
+		}
+		log.Printf("Added role %s to instance profile %s\n", roleName, roleName)
+
+		// Return the instance profile name
+		return roleName, nil
 	}
 
-	return "", nil
 }
