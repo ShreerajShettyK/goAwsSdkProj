@@ -4,26 +4,30 @@ pipeline {
     stages {
         stage('Clone Git Repository') {
             steps {
-                bat """
-                    rm -rf goAwsSdkProj
-                    git clone https://github.com/ShreerajShettyK/goAwsSdkProj.git
-                """
+                script {
+                    // Remove the existing directory if it exists
+                    bat '''
+                        if exist goAwsSdkProj rmdir /s /q goAwsSdkProj
+                        git clone https://github.com/ShreerajShettyK/goAwsSdkProj.git
+                    '''
+                }
             }
         }
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build the Docker image
-                    bat 'docker build -t go-aws-sdk-proj .'
+                    // Change directory to the cloned repository and build the Docker image
+                    bat '''
+                        cd goAwsSdkProj
+                        docker build -t go-aws-sdk-proj .
+                    '''
                 }
             }
         }
-
         stage('Run Docker Container') {
             steps {
                 script {
                     // Run the Docker container
-                    
                 }
             }
         }

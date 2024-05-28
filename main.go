@@ -61,7 +61,7 @@ func main() {
 	}
 	log.Printf("Created security group %s\n", securityGroupID)
 
-	instanceID, publicDNS, err := helper.CreateEC2Instance(ec2Client, securityGroupID, InstanceType, AmiID, IAMRoleName)
+	instanceID, publicDNS, err := helper.CreateEC2Instance(ec2Client, securityGroupID, InstanceType, AmiID, roleName)
 	if err != nil {
 		log.Fatalf("unable to create instance: %v", err)
 	}
