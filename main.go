@@ -38,6 +38,7 @@ func init() {
 	IAMRoleName = os.Getenv("iamRoleName")
 	PolicyEC2Role = os.Getenv("policyEC2Role")
 	PolicySSMCore = os.Getenv("policySSMCore")
+	log.Printf("Successfully received .env variables %s\n", IAMRoleName)
 }
 
 func main() {

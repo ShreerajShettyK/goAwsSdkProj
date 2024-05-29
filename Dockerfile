@@ -35,6 +35,9 @@ COPY start.sh /root/start.sh
 # Debugging step to list the contents of the /root directory
 RUN ls -la /root/
 
+# Ensure the correct line endings
+RUN sed -i 's/\r$//' /root/start.sh
+
 # Make the shell script executable
 RUN chmod +x /root/start.sh
 

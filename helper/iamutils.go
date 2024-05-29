@@ -81,13 +81,13 @@ func EnsureIAMRole(client *iam.Client, roleName string) (string, error) {
 		// Create the IAM policy
 		createPolicyOutput, err := client.CreatePolicy(context.Background(), &iam.CreatePolicyInput{
 			PolicyDocument: aws.String(policyDocument),
-			PolicyName:     aws.String("SSMSessionManagerPolicy"),
+			PolicyName:     aws.String("SSM-SessionManager-Policy"),
 			Description:    aws.String("Allows access to Session Manager for EC2 instances"),
 		})
 		if err != nil {
 			return "", fmt.Errorf("failed to create IAM policy: %v", err)
 		}
-		log.Printf("Created IAM policy SSMSessionManagerPolicy")
+		log.Printf("Created IAM policy SSM-SessionManager-Policy")
 
 		// Create the IAM role
 		_, err = client.CreateRole(context.Background(), &iam.CreateRoleInput{
@@ -107,7 +107,7 @@ func EnsureIAMRole(client *iam.Client, roleName string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to attach IAM policy to role: %v", err)
 		}
-		log.Printf("Attached IAM policy SSMSessionManagerPolicy to role %s\n", roleName)
+		log.Printf("Attached IAM policy SSM-SessionManager-Policy to role %s\n", roleName)
 
 		// Create an instance profile
 		_, err = client.CreateInstanceProfile(context.Background(), &iam.CreateInstanceProfileInput{
