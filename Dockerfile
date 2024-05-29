@@ -32,6 +32,9 @@ COPY .env /root/.env
 # Copy the shell script
 COPY start.sh /root/start.sh
 
+# Debugging step to list the contents of the /root directory
+RUN ls -la /root/
+
 # Make the shell script executable
 RUN chmod +x /root/start.sh
 

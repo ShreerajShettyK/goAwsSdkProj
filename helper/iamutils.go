@@ -12,7 +12,7 @@ import (
 )
 
 // EnsureIAMRole checks if the IAM role exists and creates it if it doesn't, attaching the necessary policies.
-func EnsureIAMRole(client *iam.Client, roleName, policyEC2Role, policySSMCore string) (string, error) {
+func EnsureIAMRole(client *iam.Client, roleName string) (string, error) {
 	_, err := client.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})
@@ -33,17 +33,10 @@ func EnsureIAMRole(client *iam.Client, roleName, policyEC2Role, policySSMCore st
 				{
 					"Effect": "Allow",
 					"Action": [
-						"ssm:DescribeAssociation",
-						"ssm:GetDeployablePatchSnapshotForInstance",
 						"ssm:GetDocument",
 						"ssm:DescribeDocument",
 						"ssm:GetManifest",
 						"ssm:GetParameters",
-						"ssm:ListAssociations",
-						"ssm:ListInstanceAssociations",
-						"ssm:PutInventory",
-						"ssm:PutComplianceItems",
-						"ssm:PutConfigurePackageResult",
 						"ssm:UpdateAssociationStatus",
 						"ssm:UpdateInstanceAssociationStatus",
 						"ssm:UpdateInstanceInformation",
@@ -83,7 +76,7 @@ func EnsureIAMRole(client *iam.Client, roleName, policyEC2Role, policySSMCore st
 					"Resource": "*"
 				}
 			]
-		}`
+}`
 
 		// Create the IAM policy
 		createPolicyOutput, err := client.CreatePolicy(context.Background(), &iam.CreatePolicyInput{

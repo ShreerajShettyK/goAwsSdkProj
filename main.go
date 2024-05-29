@@ -49,17 +49,17 @@ func main() {
 	iamClient := iam.NewFromConfig(cfg)
 
 	// Check if IAM role exists and create if it does not
-	roleName, err := helper.EnsureIAMRole(iamClient, IAMRoleName, PolicyEC2Role, PolicySSMCore)
+	roleName, err := helper.EnsureIAMRole(iamClient, IAMRoleName)
 	if err != nil {
 		log.Fatalf("unable to ensure IAM role: %v", err)
 	}
 	log.Printf("Successfully created or ensured IAM role %s\n", roleName)
 
-	securityGroupID, err := helper.CreateSecurityGroup(ec2Client, SubnetID, false)
+	securityGroupID, err := helper.CreateSecurityGroup(ec2Client, SubnetID, true)
 	if err != nil {
 		log.Fatalf("unable to create security group: %v", err)
 	}
-	log.Printf("Created security group %s\n", securityGroupID)
+	log.Printf("Security group: %s\n", securityGroupID)
 
 	instanceID, publicDNS, err := helper.CreateEC2Instance(ec2Client, securityGroupID, InstanceType, AmiID, roleName)
 	if err != nil {
