@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -48,12 +49,13 @@ func main() {
 	ec2Client := ec2.NewFromConfig(cfg)
 	iamClient := iam.NewFromConfig(cfg)
 
-	// Check if IAM role exists and create if it does not
 	roleName, err := helper.EnsureIAMRole(iamClient, IAMRoleName)
 	if err != nil {
 		log.Fatalf("unable to ensure IAM role: %v", err)
 	}
 	log.Printf("Successfully created or ensured IAM role %s\n", roleName)
+	log.Println("Waiting for IAM role to be available...")
+	time.Sleep(10 * time.Second)
 
 	securityGroupID, err := helper.CreateSecurityGroup(ec2Client, SubnetID, true)
 	if err != nil {
