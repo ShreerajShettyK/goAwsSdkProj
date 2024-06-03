@@ -11,8 +11,17 @@ import (
 	iamTypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
 )
 
+type iamutilsInterface interface {
+	GetRole(ctx context.Context, params *iam.GetRoleInput, optFns ...func(*iam.Options)) (*iam.GetRoleOutput, error)
+	CreatePolicy(ctx context.Context, params *iam.CreatePolicyInput, optFns ...func(*iam.Options)) (*iam.CreatePolicyOutput, error)
+	CreateRole(ctx context.Context, params *iam.CreateRoleInput, optFns ...func(*iam.Options)) (*iam.CreateRoleOutput, error)
+	AttachRolePolicy(ctx context.Context, params *iam.AttachRolePolicyInput, optFns ...func(*iam.Options)) (*iam.AttachRolePolicyOutput, error)
+	CreateInstanceProfile(ctx context.Context, params *iam.CreateInstanceProfileInput, optFns ...func(*iam.Options)) (*iam.CreateInstanceProfileOutput, error)
+	AddRoleToInstanceProfile(ctx context.Context, params *iam.AddRoleToInstanceProfileInput, optFns ...func(*iam.Options)) (*iam.AddRoleToInstanceProfileOutput, error)
+}
+
 // EnsureIAMRole checks if the IAM role exists and creates it if it doesn't, attaching the necessary policies.
-func EnsureIAMRole(client *iam.Client, roleName string) (string, error) {
+func EnsureIAMRole(client iamutilsInterface, roleName string) (string, error) {
 	_, err := client.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})

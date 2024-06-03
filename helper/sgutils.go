@@ -22,8 +22,15 @@ func randString(n int) string {
 	return string(b)
 }
 
+type securitygroupInterface interface {
+	DescribeSubnets(ctx context.Context, params *ec2.DescribeSubnetsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeSubnetsOutput, error)
+	DescribeSecurityGroups(ctx context.Context, params *ec2.DescribeSecurityGroupsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeSecurityGroupsOutput, error)
+	CreateSecurityGroup(ctx context.Context, params *ec2.CreateSecurityGroupInput, optFns ...func(*ec2.Options)) (*ec2.CreateSecurityGroupOutput, error)
+	AuthorizeSecurityGroupIngress(ctx context.Context, params *ec2.AuthorizeSecurityGroupIngressInput, optFns ...func(*ec2.Options)) (*ec2.AuthorizeSecurityGroupIngressOutput, error)
+}
+
 // CreateSecurityGroup creates a security group or returns the default security group if specified.
-func CreateSecurityGroup(client *ec2.Client, subnetID string, useDefault bool) (string, error) {
+func CreateSecurityGroup(client securitygroupInterface, subnetID string, useDefault bool) (string, error) {
 	// Retrieve VPC ID from the subnet
 	subnetInput := &ec2.DescribeSubnetsInput{
 		SubnetIds: []string{subnetID},

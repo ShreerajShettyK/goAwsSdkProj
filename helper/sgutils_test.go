@@ -2,82 +2,146 @@ package helper
 
 import (
 	"context"
+	"fmt"
+
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/stretchr/testify/assert"
 )
 
-func deleteSecurityGroup(client *ec2.Client, groupID string) error {
-	input := &ec2.DeleteSecurityGroupInput{
-		GroupId: aws.String(groupID),
-	}
-	_, err := client.DeleteSecurityGroup(context.Background(), input)
-	return err
+// Mock implementation of securitygroupInterface for testing
+type MockSecurityGroupClient struct {
+	DescribeSubnetsErr               error
+	DescribeSecurityGroupsErr        error
+	CreateSecurityGroupErr           error
+	AuthorizeSecurityGroupIngressErr error
 }
 
 func TestCreateSecurityGroup(t *testing.T) {
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion("us-east-1"))
-	if err != nil {
-		t.Fatalf("unable to load SDK config, %v", err)
+	t.Run("DescribeSubnetsError", func(t *testing.T) {
+		client := MockSecurityGroupClient{
+			DescribeSubnetsErr: fmt.Errorf("describe subnets error"),
+		}
+		_, err := CreateSecurityGroup(&client, "subnet-123456", false)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to describe subnet")
+	})
+
+	t.Run("UseDefaultNoDefaultGroup", func(t *testing.T) {
+		client := MockSecurityGroupClient{
+			DescribeSubnetsErr:        nil,
+			DescribeSecurityGroupsErr: fmt.Errorf("describe security groups error"),
+		}
+		_, err := CreateSecurityGroup(&client, "subnet-123456", true)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to describe security groups")
+	})
+
+	t.Run("UseDefaultSuccess", func(t *testing.T) {
+		client := MockSecurityGroupClient{
+			DescribeSubnetsErr:        nil,
+			DescribeSecurityGroupsErr: nil,
+		}
+		groupID, err := CreateSecurityGroup(&client, "subnet-123456", true)
+		assert.NoError(t, err)
+		assert.NotNil(t, groupID)
+	})
+
+	t.Run("CreateSecurityGroupError", func(t *testing.T) {
+		client := MockSecurityGroupClient{
+			DescribeSubnetsErr:     nil,
+			CreateSecurityGroupErr: fmt.Errorf("create security group error"),
+		}
+		_, err := CreateSecurityGroup(&client, "subnet-123456", false)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create security group")
+	})
+
+	t.Run("CreateSecurityGroupDuplicateName", func(t *testing.T) {
+		client := MockSecurityGroupClient{
+			DescribeSubnetsErr:     nil,
+			CreateSecurityGroupErr: fmt.Errorf("InvalidGroup.Duplicate: duplicate group name"),
+		}
+		_, err := CreateSecurityGroup(&client, "subnet-123456", false)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "security group with name")
+	})
+
+	t.Run("AuthorizeSecurityGroupIngressError", func(t *testing.T) {
+		client := MockSecurityGroupClient{
+			DescribeSubnetsErr:               nil,
+			AuthorizeSecurityGroupIngressErr: fmt.Errorf("authorize ingress error"),
+		}
+		_, err := CreateSecurityGroup(&client, "subnet-123456", false)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to authorize security group ingress")
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		client := MockSecurityGroupClient{
+			DescribeSubnetsErr: nil,
+		}
+		groupID, err := CreateSecurityGroup(&client, "subnet-123456", false)
+		assert.NoError(t, err)
+		assert.NotNil(t, groupID)
+	})
+}
+
+// Implementing the securitygroupInterface for MockSecurityGroupClient
+
+func (client *MockSecurityGroupClient) DescribeSubnets(ctx context.Context, params *ec2.DescribeSubnetsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeSubnetsOutput, error) {
+	if client.DescribeSubnetsErr != nil {
+		return nil, client.DescribeSubnetsErr
+	}
+	return &ec2.DescribeSubnetsOutput{
+		Subnets: []types.Subnet{
+			{
+				VpcId: aws.String("vpc-123456"),
+			},
+		},
+	}, nil
+}
+
+func (client *MockSecurityGroupClient) DescribeSecurityGroups(ctx context.Context, params *ec2.DescribeSecurityGroupsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeSecurityGroupsOutput, error) {
+	if client.DescribeSecurityGroupsErr != nil {
+		return nil, client.DescribeSecurityGroupsErr
 	}
 
-	client := ec2.NewFromConfig(cfg)
-
-	tests := []struct {
-		name     string
-		client   *ec2.Client
-		subnetID string
-		wantErr  bool
-	}{
-		{
-			name:     "Valid subnet ID",
-			client:   client,
-			subnetID: "subnet-08854212983b84d1e", // Replace with a valid subnet ID
-			wantErr:  false,
-		},
-		{
-			name:     "Invalid subnet ID",
-			client:   client,
-			subnetID: "subnet-invalid",
-			wantErr:  true,
-		},
-		{
-			name:     "Error Describing Subnet",
-			client:   client,
-			subnetID: "subnet-invalid",
-			wantErr:  true,
-		},
-		{
-			name:     "Error Creating Security Group",
-			client:   client,
-			subnetID: "subnet-invalid", // Using an invalid subnet ID to trigger an error
-			wantErr:  true,
-		},
-		{
-			name:     "Error Authorizing Security Group Ingress",
-			client:   client,
-			subnetID: "subnet-08854212983b84d1e", // Replace with a valid subnet ID
-			wantErr:  true,
-		},
+	var vpcID *string
+	for _, filter := range params.Filters {
+		if aws.ToString(filter.Name) == "vpc-id" {
+			vpcID = aws.String(filter.Values[0])
+			break
+		}
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.name == "Error Describing Subnet" {
-				tt.subnetID = "subnet-invalid"
-			}
-			got, err := CreateSecurityGroup(tt.client, tt.subnetID)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateSecurityGroup() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.wantErr == false && got == "" {
-				t.Errorf("Expected non-empty security group ID, got %v", got)
-			} else if !tt.wantErr {
-				defer deleteSecurityGroup(tt.client, got)
-			}
-		})
+	if vpcID != nil && *vpcID == "vpc-123456" {
+		return &ec2.DescribeSecurityGroupsOutput{
+			SecurityGroups: []types.SecurityGroup{
+				{
+					GroupId: aws.String("sg-123456"),
+				},
+			},
+		}, nil
 	}
+	return &ec2.DescribeSecurityGroupsOutput{}, nil
+}
+
+func (client *MockSecurityGroupClient) CreateSecurityGroup(ctx context.Context, params *ec2.CreateSecurityGroupInput, optFns ...func(*ec2.Options)) (*ec2.CreateSecurityGroupOutput, error) {
+	if client.CreateSecurityGroupErr != nil {
+		return nil, client.CreateSecurityGroupErr
+	}
+	return &ec2.CreateSecurityGroupOutput{
+		GroupId: aws.String("sg-123456"),
+	}, nil
+}
+
+func (client *MockSecurityGroupClient) AuthorizeSecurityGroupIngress(ctx context.Context, params *ec2.AuthorizeSecurityGroupIngressInput, optFns ...func(*ec2.Options)) (*ec2.AuthorizeSecurityGroupIngressOutput, error) {
+	if client.AuthorizeSecurityGroupIngressErr != nil {
+		return nil, client.AuthorizeSecurityGroupIngressErr
+	}
+	return &ec2.AuthorizeSecurityGroupIngressOutput{}, nil
 }
