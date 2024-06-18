@@ -3,42 +3,28 @@ package main
 import (
 	"context"
 	"log"
-	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-	"github.com/joho/godotenv"
 	"main.go/helper"
 )
 
-// Constants initialized from environment variables
 var (
-	Region        string
-	InstanceType  string
-	AmiID         string
-	SubnetID      string
-	IAMRoleName   string
-	PolicyEC2Role string
-	PolicySSMCore string
+	Region       string
+	InstanceType string
+	AmiID        string
+	SubnetID     string
+	IAMRoleName  string
 )
 
-// init initializes the constants from environment variables
 func init() {
-	err := godotenv.Load()
+	var err error
+	AmiID, SubnetID, IAMRoleName, InstanceType, _, Region, err = helper.FetchSecrets()
 	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+		log.Fatalf("Error fetching secrets from SecretsManager: %v", err)
 	}
-
-	Region = os.Getenv("region")
-	InstanceType = os.Getenv("instanceType")
-	AmiID = os.Getenv("amiID")
-	SubnetID = os.Getenv("subnetID")
-	IAMRoleName = os.Getenv("iamRoleName")
-	PolicyEC2Role = os.Getenv("policyEC2Role")
-	PolicySSMCore = os.Getenv("policySSMCore")
-	// log.Printf("Successfully received .env variables %s\n", IAMRoleName)
 }
 
 func main() {

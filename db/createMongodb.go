@@ -5,30 +5,25 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"main.go/helper"
 )
 
 var client *mongo.Client
 
 func main() {
 	var err error
-
-	// Load environment variables from .env file
-	err = godotenv.Load("/root/.env")
+	_, _, _, _, mongoDbConnectionString, _, err := helper.FetchSecrets()
 	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+		return
 	}
-
-	mongoURI := os.Getenv("mongoDbConnectionString")
-	if mongoURI == "" {
+	if mongoDbConnectionString == "" {
 		log.Fatal("MONGODB connection string not set")
 	}
-	clientOptions := options.Client().ApplyURI(mongoURI)
+	clientOptions := options.Client().ApplyURI(mongoDbConnectionString)
 	client, err = mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		log.Fatal(err)
