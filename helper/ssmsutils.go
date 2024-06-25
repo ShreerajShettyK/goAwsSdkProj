@@ -52,6 +52,10 @@ func ExecuteSSMCommands(cfg aws.Config, instanceID string) error {
 		"sudo systemctl restart jenkins",
 		"sudo systemctl restart docker",
 		"sudo su - jenkins",
+		"sudo apt-get install -y unzip",
+		"curl \"https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip\" -o \"awscliv2.zip\"",
+		"unzip awscliv2.zip",
+		"sudo ./aws/install",
 	}
 
 	commandInput := &ssm.SendCommandInput{

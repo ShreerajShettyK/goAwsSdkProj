@@ -50,6 +50,16 @@ func createInstanceInput(securityGroupID, instanceType, amiID, instanceProfileNa
 			Name: aws.String(instanceProfileName),
 		},
 		UserData: aws.String(base64.StdEncoding.EncodeToString([]byte(userData))),
+		BlockDeviceMappings: []types.BlockDeviceMapping{
+			{
+				DeviceName: aws.String("/dev/xvda"), // The device name for the root volume
+				Ebs: &types.EbsBlockDevice{
+					VolumeSize:          aws.Int32(15),       // Size of the volume in GB
+					VolumeType:          types.VolumeTypeGp3, // General Purpose SSD (GP3)
+					DeleteOnTermination: aws.Bool(true),
+				},
+			},
+		},
 	}
 }
 
